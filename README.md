@@ -20,3 +20,14 @@ helm --namespace inference-ms install my-nim nim-llm/ -f ./nim-llamam3-XXX-value
 helm --namespace inference-ms install vllm vllm -f path/to/your/custom-values.yaml
 
 helm --namespace inference-ms install nemo-embedding embedding-ms
+
+az aks nodepool scale \
+  --resource-group <resource-group-name> \
+  --cluster-name <aks-cluster-name> \
+  --name <node-pool-name> \
+  --node-count 0
+
+az aks nodepool show \
+  --resource-group vikalluru-nim-demo \
+  --cluster-name nim-demo \
+  --name gpus
