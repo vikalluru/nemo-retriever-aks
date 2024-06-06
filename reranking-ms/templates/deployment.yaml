@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reranking-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reranking-ms
+  template:
+    metadata:
+      labels:
+        app: reranking-ms
+    spec:
+      initContainers:
+        - name: ngc-model-puller
+          image: "{{ .imageName  | default "eclipse/debian_jre" }}:{{ .imageTag | default "latest" }}"
+          securityContext:
+            runAsUser: 0
+          command: ["/bin/bash", "-c"]
+          args: ["/scripts/ngc_pull.sh"]
+          env:
+            - name: NGC_CLI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.ngcApiSecretName }}"
+                  key: NGC_CLI_API_KEY
+            - name: NGC_DECRYPT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.ngcApiSecretName }}"
+                  key: NGC_DECRYPT_KEY
+                  optional: true
+            - name: STORE_MOUNT_PATH
+              value: {{ .Values.env.STORE_MOUNT_PATH | quote }}
+            - name: NGC_CLI_ORG
+              value: {{ .Values.env.NGC_CLI_ORG | quote }}
+            - name: NGC_CLI_TEAM
+              value: {{ .Values.env.NGC_CLI_TEAM | quote }}
+            - name: NGC_CLI_VERSION
+              value: {{ .Values.env.NGC_CLI_VERSION | quote }}
+            - name: NGC_MODEL_NAME
+              value: {{ .Values.env.NGC_MODEL_NAME | quote }}
+            - name: NGC_MODEL_VERSION
+              value: {{ .Values.env.NGC_MODEL_VERSION | quote }}
+            - name: MODEL_NAME
+              value: {{ .Values.env.MODEL_NAME | quote }}
+            - name: TARFILE
+              value: {{ .Values.env.TARFILE | quote }}
+            - name: NGC_EXE
+              value: {{ .Values.env.NGC_EXE | default "ngc" | quote }}
+            - name: DOWNLOAD_NGC_CLI
+              value: {{ .Values.env.DOWNLOAD_NGC_CLI | default "true" | quote }}
+          volumeMounts:
+            - name: scripts-volume
+              mountPath: /scripts
+            - name: model-store
+              mountPath: /models
+      containers:
+        - name: embedding-ms
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["./bin/web", "-p", "8080", "-n" ,"2" ,"-g" ,"model_config_templates/NV-Rerank-QA-Mistral-4B_template.yaml", "-c", "/models/nv-rerank-qa-mistral-4b_v2"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+          livenessProbe:
+            exec:
+              command: {{ .Values.healthcheck.test }}
+            initialDelaySeconds: 10
+            periodSeconds: {{ .Values.healthcheck.interval | int }}
+            timeoutSeconds: {{ .Values.healthcheck.timeout | int }}
+            failureThreshold: {{ .Values.healthcheck.retries | int }}
+          volumeMounts:
+            - name: model-store
+              mountPath: /models
+      volumes:
+        - name: scripts-volume
+          configMap:
+            name: {{ .Release.Name }}-scripts-configmap
+            defaultMode: 0555
+        - name: model-store
+          persistentVolumeClaim:
+            claimName: reranking-pvc-model
+          # hostPath:
+          #   path: /models
+          #   type: DirectoryOrCreate
+      imagePullSecrets:
+        - name: {{ .Values.nvcrPullSecretName }}

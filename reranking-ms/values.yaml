@@ -1,0 +1,35 @@
+image:
+  repository: "nimdemocr.azurecr.io/nemo-retriever"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  limits:
+    nvidia.com/gpu: 1
+  requests:
+    nvidia.com/gpu: 1
+
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+  interval: 10s
+  timeout: 20s
+  retries: 100
+
+ngcApiSecretName: ngc-api
+nvcrPullSecretName: registry-secret
+
+env:
+  NGC_CLI_ORG: ohlfw0olaadg
+  NGC_CLI_TEAM: ea-participants
+  NGC_MODEL_NAME: nv-rerank-qa-mistral-4b
+  NGC_MODEL_VERSION: 2
+  DOWNLOAD_NGC_CLI: "true"  # set to string 'true' if container should download and install ngc cli
+  NGC_CLI_VERSION: "3.34.1"  # version of ngc cli to download (only matters if downloading)
+  TARFILE: ""  # tells the script to untar the model. Set to "" to turn off
+
+nodeSelector:
+  nvidia.com/gpu.family: ampere
