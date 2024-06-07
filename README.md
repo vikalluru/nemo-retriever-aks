@@ -1,5 +1,4 @@
-```markdown
-# Deploying NIMs and NeMo Microservices (NVSTACK) on Azure
+# Deploying NIMs and NeMo Microservices (NVSTACK) on Azure Kubernetes service
 
 This guide provides step-by-step instructions on how to set up and deploy Nvidia Inference Microservices (NIMs) and NeMo microservices on Azure. Follow the instructions below to get started.
 
