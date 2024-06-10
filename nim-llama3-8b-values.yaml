@@ -1,0 +1,18 @@
+image:
+  # Adjust to the actual location of the image and version you want
+  repository: nvcr.io/nim/meta/llama3-8b-instruct
+  tag: 1.0.0
+imagePullSecrets:
+  - name: registry-secret
+model:
+  name: meta/llama3-8b-instruct # not strictly necessary, but enables running "helm test" below
+  ngcAPISecret: ngc-api
+persistence:
+  enabled: true
+  annotations:
+    helm.sh/resource-policy: keep
+statefulSet:
+    enabled: false
+resources:
+  limits:
+    nvidia.com/gpu: 1

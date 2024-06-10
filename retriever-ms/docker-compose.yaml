@@ -1,0 +1,246 @@
+version: "3"
+services:
+  ###
+  # Retrieval microservice on NGC
+  ###
+
+  retrieval-ms:
+    image: "nvcr.io/ohlfw0olaadg/ea-participants/nemo-retriever-microservice:24.04"
+
+    environment:
+      &retrieverEnv # Postgres connection string for holding collection metadata
+      - DATABASE_URL=postgresql://postgres:pgadmin@postgres:5432/postgres
+
+      # PDF extraction service
+      - TIKA_URL=http://tika:9998/tika
+
+      # OpenTelemetry environmental variables
+      - OTEL_SERVICE_NAME=nemo-retrieval-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_PYTHON_EXCLUDED_URLS="health"
+
+      # Multistage hybrid pipeline running in CPU mode
+      # This is the pipeline that QA and VDR will use to
+      # evaluate the Retrieval Microservice.
+      - HYBRID_MILVUS_URI=http://milvus:19530/default
+      - HYBRID_EMBEDDER_URI=http://57.153.22.2:8000/v1/embeddings
+      - HYBRID_EMBEDDER_MAX_BATCH_SIZE=8192
+      - HYBRID_EMBEDDING_DIMENSION=1024
+      - HYBRID_EMBEDDER_MODEL_NAME=NV-Embed-QA
+      # Yes this is a 20 _second_ timeout. The embedder running
+      # on CPU can be very slow.
+      - HYBRID_EMBEDDER_TIMEOUT=20
+      - HYBRID_ELASTICSEARCH_URI=http://elasticsearch:9200
+      - HYBRID_SPARSE_TOP_K=100
+      - HYBRID_DENSE_TOP_K=100
+
+      # multistage hybrid pipeline running in GPU mode
+      - RANKED_HYBRID_MILVUS_URI=http://milvus:19530/default
+      - RANKED_HYBRID_EMBEDDING_DIMENSION=1024
+      - RANKED_HYBRID_EMBEDDER_URI=http://57.153.22.2:8000/v1/embeddings
+      - RANKED_HYBRID_EMBEDDER_MODEL_NAME=NV-Embed-QA
+      - RANKED_HYBRID_EMBEDDER_MAX_BATCH_SIZE=8192
+      - RANKED_HYBRID_EMBEDDER_TIMEOUT=20
+      - RANKED_HYBRID_ELASTICSEARCH_URI=http://elasticsearch:9200
+      - RANKED_HYBRID_RANKER_MODEL_NAME=NV-Rerank-QA-Mistral-4B
+      - RANKED_HYBRID_RANKER_URI=http://57.153.18.202:8000/v1/ranking
+      - RANKED_HYBRID_RANKER_TOP_K=40
+      - RANKED_HYBRID_RANKER_TIMEOUT=5
+      - RANKED_HYBRID_DENSE_TOP_K=100
+      - RANKED_HYBRID_SPARSE_TOP_K=100
+
+      # This is required until github.com/open-telemetry/opentelemetry-python-contrib/pull/1990
+      # is merged
+      - OTEL_PYTHON_DISABLED_INSTRUMENTATIONS=elasticsearch
+
+      - ENABLE_DATASOURCES_RETRIEVER=false
+
+    # Expose port 8000 on the container to port 1984 on the host.
+    ports:
+      - "1984:8000"
+
+    # Run the microservice on port 8000, must align with `ports` above.
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "opentelemetry-instrument \
+        uvicorn retrieval.main:app --host 0.0.0.0 --port 8000"
+
+    healthcheck:
+      test: [
+          "CMD",
+          "python",
+          "-c",
+          "import requests;
+          requests.get('http://localhost:8000/health').raise_for_status()",
+        ]
+      interval: 10s
+      timeout: 20s
+      retries: 20
+
+    # Set the working directory to /app. This is pedantic to avoid relying on the Dockerfile setting WORKDIR=/app.
+    working_dir: /app
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-db-migration:
+        condition: service_completed_successfully
+      milvus:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+
+  ###
+  # Milvus
+  #  adapted from https://github.com/milvus-io/milvus/releases/download/v2.3.3/milvus-standalone-docker-compose.yml
+  ###
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.11
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd:Z
+    command:
+      etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls
+      http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio_data:/minio_data:Z
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  milvus:
+    image: milvusdb/milvus:v2.3.5
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      LOG_LEVEL: error
+    volumes:
+      - milvus_data:/var/lib/milvus:Z
+      - ./config/milvus-config.yaml:/milvus/configs/milvus.yaml
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - "etcd"
+      - "minio"
+
+  ###
+  # Elasticsearch
+  #  adapted from https://geshan.com.np/blog/2023/06/elasticsearch-docker/#run-elasticsearch-with-docker-compose
+  ###
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:8.12.0"
+    ports:
+      - 9200:9200
+    restart: on-failure
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - xpack.security.enabled=false
+      - xpack.license.self_generated.type=basic
+      - network.host=0.0.0.0
+      - cluster.routing.allocation.disk.threshold_enabled=false
+    hostname: elasticsearch
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:9200/_cat/health"]
+      interval: 10s
+      timeout: 1s
+      retries: 10
+
+  ###
+  # Postgres service
+  #  adapted from https://github.com/docker-library/docs/blob/master/postgres/README.md#-via-docker-compose-or-docker-stack-deploy
+  ###
+  postgres:
+    image: postgres:16.1
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: pgadmin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:Z
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U postgres -d postgres'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  postgres-db-migration:
+    image: "nvcr.io/ohlfw0olaadg/ea-participants/nemo-retriever-microservice:24.04"
+    environment: *retrieverEnv
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "/app/bin/run-db-migration.sh"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ###
+  # PDF extraction service
+  ###
+  tika:
+    image: apache/tika:2.9.1.0
+
+  ###
+  # OpenTelemetry Collector (local)
+  #  adapted from https://jessitron.com/2021/08/11/run-an-opentelemetry-collector-locally-in-docker/
+  #  and https://github.com/open-telemetry/opentelemetry-demo/blob/main/docker-compose.yml
+  ###
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    hostname: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "13133:13133" # health check
+      - "4317:4317" # OTLP over gRPC receiver
+      - "55679:55679" # UI
+
+  zipkin:
+    image: openzipkin/zipkin:3.0.6
+    ports:
+      - "9411:9411" # Zipkin UI and API
+
+volumes:
+  etcd_data:
+  milvus_data:
+  minio_data:
+  postgres_data:
+
+networks:
+  my_bridge_network:
+    external: true

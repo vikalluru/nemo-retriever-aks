@@ -4,8 +4,8 @@ from langchain.schema import Document
 from langchain.embeddings.base import Embeddings
 
 class NVEmbeddings(Embeddings):
-    def __init__(self, api_url, model):
-        self.api_url = api_url
+    def __init__(self, base_url, model):
+        self.base_url = base_url
         self.headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
@@ -20,7 +20,7 @@ class NVEmbeddings(Embeddings):
             "input_type": "passage"
         })
 
-        response = requests.post(self.api_url, headers=self.headers, json=self.body)
+        response = requests.post(self.base_url, headers=self.headers, json=self.body)
 
         if response.status_code != 200:
             raise ValueError(f"Request failed with status {response.status_code}")
@@ -35,7 +35,7 @@ class NVEmbeddings(Embeddings):
             "input_type": "query"
         })
 
-        response = requests.post(self.api_url, headers=self.headers, json=self.body)
+        response = requests.post(self.base_url, headers=self.headers, json=self.body)
 
         if response.status_code != 200:
             raise ValueError(f"Request failed with status {response.status_code}")
