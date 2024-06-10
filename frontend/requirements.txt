@@ -5,4 +5,4 @@ PyPDF2
 langchain
 langchain_community
 langchain_openai
-
+./nemo-retriever-python-client_v0.1.6/nemo_retriever-0.1.6-py3-none-any.whl

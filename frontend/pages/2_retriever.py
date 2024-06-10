@@ -98,9 +98,9 @@ def check_health(endpoint_type, endpoint_config):
     except requests.exceptions.RequestException as e:
         return False
 
-def get_prompt_with_context(prompt, nim_on):
+def get_prompt_with_context(prompt, retriever_client):
     assert messages[-1]["role"] == "user"
-    context = get_context(prompt, nim_on)
+    context = retriever_client.retrieve(prompt)
     prompt = f"You are an AI assistant in a Financial company. Answer this question: {prompt} based on this: {context}."
     return prompt
 
@@ -224,19 +224,24 @@ def get_nim_stream_response(endpoint_type, endpoint_config, messages):
     except Exception as e:
         st.error(f"Warning Or Error: {error_msg} {error_response_code}")
 
+nv_retriever_client = NVRetriever(base_url="http://localhost:1984")
+oss_retriever_client = OSSRetriever()
+
 if "nv_stack_off_db_ready" not in st.session_state:
     st.session_state.nv_stack_off_db_ready = False
 if "nv_stack_on_db_ready" not in st.session_state:
     st.session_state.nv_stack_on_db_ready = False
 
-st.session_state.uploaded_files = []
-
 # Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Init uploaded files
+if "uploaded_files" not in st.session_state:
+    st.session_state.uploaded_files = []
+
 # Set the title of the Streamlit app"
-st.set_page_config(layout="wide", page_title="Retriever demo")
+st.set_page_config(layout="wide", page_title="NeMo Retriever demo")
 st.markdown("""
     <style>
     .new-session-button {
@@ -258,7 +263,7 @@ st.markdown("""
 
 cols = st.columns([2, 3, 2, 1])
 with cols[0]:
-    st.header('NV stack OFF vs NV stack ON')
+    st.header('NeMo Retriever OFF vs NeMo retriever ON')
 with cols[2]:
     endpoint_type = st.selectbox("Endpoint Type", [endpoint.name for endpoint in EndpointType])
     st.session_state.endpoint_choice = EndpointType[endpoint_type]
@@ -268,19 +273,19 @@ with cols[3]:
     if cols[3].button('New session'):
         st.session_state.messages = []
 
-col1, col2, _ = st.columns([5, 2, 5])
+col1, col2, col3 = st.columns([3, 1, 4])
 
 with col1:
-    st.session_state.uploaded_files = st.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True)
-
+    uploaded_files = st.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True)
+    for uploaded_file in uploaded_files:
+        st.toast(uploaded_file)
 
 col2.markdown('<div class="db-button"></div>', unsafe_allow_html=True)
 with col2:
     if st.button('Create DB'):
-        if len(st.session_state.uploaded_files) > 1:
-            st.toast('Creating database')
-            st.session_state.nv_stack_off_db_ready = save_db(st.session_state.uploaded_file, nim_on=False)
-            st.session_state.nv_stack_on_db_ready = save_db(st.session_state.uploaded_file, nim_on=True)
+        st.write(st.session_state.uploaded_files)
+        # st.session_state.nv_stack_off_db_ready = nv_retriever_client.add_to_collection(st.session_state.uploaded_files, nim_on_bar.progress)
+        # st.session_state.nv_stack_on_db_ready = oss_retriever_client.process_pdfs(st.session_state.uploaded_files, nim_off_bar.progress)
 
 col1, _, col2, _ = st.columns([5,1,5,1])
 
@@ -356,7 +361,7 @@ if prompt := st.chat_input("What is up?"):
             st.markdown(prompt)
         with st.chat_message("assistant"):
             messages = [{"role": "assistant" if m["role"] == "NIMOFF" else m["role"], "content": m["content"]} for m in st.session_state.messages if m["role"] in ["user", "NIMOFF"]]
-            messages[-1]["content"] = get_prompt_with_context(prompt, False)
+            messages[-1]["content"] = get_prompt_with_context(prompt, False, oss_retriever_client)
             stream = get_os_stream_response(EndpointType.AZUREML, nim_off_endpoints[endpoint_type], messages)
             response = st.write_stream(stream)
             if len(response) > 0:
@@ -372,7 +377,7 @@ if prompt := st.chat_input("What is up?"):
             st.markdown(prompt)
         with st.chat_message("assistant"):
             messages = [{"role": "assistant" if m["role"] == "NIM" else m["role"], "content": m["content"]}for m in st.session_state.messages if m["role"] in ["user", "NIM"]]
-            messages[-1]["content"] = get_prompt_with_context(prompt, True)
+            messages[-1]["content"] = get_prompt_with_context(prompt, True, nv_retriever_client)
             stream = get_nim_stream_response(EndpointType.AZUREML, nim_on_endpoints[endpoint_type], messages)
             response = st.write_stream(stream)
             if len(response) > 0:

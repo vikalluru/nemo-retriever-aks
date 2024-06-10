@@ -20,12 +20,14 @@ class NVRetriever:
         except Exception as e:
             print("An error occurred while creating a new collection:", e)
         
-    def add_to_collection(self, file_path):
+    def add_to_collection(self, file_paths, callback) -> bool:
         assert self.collection_id is not None
-        for file_name in os.listdir(file_path):
-            response = self.retriever_client.add_document(collection_id=self.collection_id, filepath=os.path.join(file_path, file_name))
+        total_files = len(file_paths)
+        for i, file_path in enumerate(file_paths):
+            response = self.retriever_client.add_document(collection_id=self.collection_id, filepath=filepath)
+            callback((i+1)/(total_files) * 100, f"Processed PDF {pdf_path}")
             print(f"Added document {file_name} with id {response.documents[0].id}")
-        print("Successfully added files")
+        return True
 
     def delete_collection(self):
         try:
@@ -42,7 +44,6 @@ class NVRetriever:
         except Exception as e:
             print("An error occurred while searching the collection:", e)
 
-
-ret = NVRetriever("http://localhost:1984", "br_data_test", "ranked_hybrid")
-# ret.add_to_collection("/home/azureuser/nim-demo-aks/blackrock_data")
-breakpoint()
+if __name__ == "__main__":
+    ret = NVRetriever("http://localhost:1984", "br_data_test", "ranked_hybrid")
+    # ret.add_to_collection("/home/azureuser/nim-demo-aks/blackrock_data")
