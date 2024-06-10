@@ -2,7 +2,7 @@ from nemo_retriever.retriever_client import RetrieverClient
 from pprint import pprint
 import os
 
-class NVRetriever():
+class NVRetriever:
     """
     ret.retrieve("What is thte total stock-based compensation expense incurred by Blackrcok in 2018")
     """

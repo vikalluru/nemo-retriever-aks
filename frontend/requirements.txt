@@ -2,4 +2,7 @@ streamlit
 requests
 transformers
 PyPDF2
+langchain
+langchain_community
+langchain_openai
 
