@@ -7,11 +7,11 @@ import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from transformers import AutoTokenizer
-from services.nemo_retreiver_embedding import save_db, get_context
+from services.nv_retriever_client import NVRetriever
+from services.oss_retriever_client import OSSRetriever
 
 class EndpointType(Enum):
     AZUREML = auto()
-    PROMPTFLOW = auto()
     API_CATALOG = auto()
 
 @dataclass
@@ -229,7 +229,7 @@ if "nv_stack_off_db_ready" not in st.session_state:
 if "nv_stack_on_db_ready" not in st.session_state:
     st.session_state.nv_stack_on_db_ready = False
 
-st.session_state.uploaded_file = None
+st.session_state.uploaded_files = []
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -271,13 +271,13 @@ with cols[3]:
 col1, col2, _ = st.columns([5, 2, 5])
 
 with col1:
-    st.session_state.uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+    st.session_state.uploaded_files = st.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True)
 
 
 col2.markdown('<div class="db-button"></div>', unsafe_allow_html=True)
 with col2:
     if st.button('Create DB'):
-        if st.session_state.uploaded_file is not None:
+        if len(st.session_state.uploaded_files) > 1:
             st.toast('Creating database')
             st.session_state.nv_stack_off_db_ready = save_db(st.session_state.uploaded_file, nim_on=False)
             st.session_state.nv_stack_on_db_ready = save_db(st.session_state.uploaded_file, nim_on=True)
