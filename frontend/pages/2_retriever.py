@@ -75,7 +75,7 @@ nim_on_ttft = 0
 nim_on_time_to_next_token = []
 nim_on_tokens_received = 0
 
-nv_retriever_client = NVRetriever(base_url="http://localhost:1984")
+nv_retriever_client = NVRetriever(base_url="http://51.124.97.12:1984")
 oss_retriever_client = OSSRetriever()
 
 tokenizer = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1", token="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")
