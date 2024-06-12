@@ -3,6 +3,8 @@ import time
 import json
 import requests
 import re
+import shutil
+import os
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -224,6 +226,26 @@ def get_nim_stream_response(endpoint_type, endpoint_config, messages):
     except Exception as e:
         st.error(f"Warning Or Error: {error_msg} {error_response_code}")
 
+def manage_uploaded_files(uploaded_files):
+    try:
+        upload_dir = "uploaded_files"
+        if os.path.exists(upload_dir):
+            shutil.rmtree(upload_dir)
+        os.makedirs(upload_dir)
+        
+        filepaths = []
+        for uploaded_file in uploaded_files:
+            # Save each file to the "uploaded_files" directory
+            file_path = os.path.join(upload_dir, uploaded_file.name)
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            filepaths.append(file_path)
+        
+        return filepaths
+    except Exception as e:
+        st.error(f"Failed to manage uploaded files. Reason: {e}")
+        return None
+
 nv_retriever_client = NVRetriever(base_url="http://localhost:1984")
 oss_retriever_client = OSSRetriever()
 
@@ -237,8 +259,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Init uploaded files
-if "uploaded_files" not in st.session_state:
-    st.session_state.uploaded_files = []
+if "uploaded_filepaths" not in st.session_state:
+    st.session_state.uploaded_filepaths = []
 
 # Set the title of the Streamlit app"
 st.set_page_config(layout="wide", page_title="NeMo Retriever demo")
@@ -277,15 +299,19 @@ col1, col2, col3 = st.columns([3, 1, 4])
 
 with col1:
     uploaded_files = st.file_uploader("Choose PDF files", type="pdf", accept_multiple_files=True)
-    for uploaded_file in uploaded_files:
-        st.toast(uploaded_file)
+    if uploaded_files:
+        filepaths = manage_uploaded_files(uploaded_files)
+        if filepaths:
+            st.session_state.uploaded_filepaths.extend(filepaths)
+            st.toast(f"Uploaded {len(filepaths)} files")
+
 
 col2.markdown('<div class="db-button"></div>', unsafe_allow_html=True)
 with col2:
     if st.button('Create DB'):
-        st.write(st.session_state.uploaded_files)
-        # st.session_state.nv_stack_off_db_ready = nv_retriever_client.add_to_collection(st.session_state.uploaded_files, nim_on_bar.progress)
-        # st.session_state.nv_stack_on_db_ready = oss_retriever_client.process_pdfs(st.session_state.uploaded_files, nim_off_bar.progress)
+        st.write(st.session_state.uploaded_filepaths)
+        st.session_state.nv_stack_off_db_ready = nv_retriever_client.add_to_collection(st.session_state.uploaded_files, nim_on_bar.progress)
+        st.session_state.nv_stack_on_db_ready = oss_retriever_client.process_pdfs(st.session_state.uploaded_files, nim_off_bar.progress)
 
 col1, _, col2, _ = st.columns([5,1,5,1])
 
