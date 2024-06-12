@@ -5,6 +5,8 @@ import requests
 import re
 import shutil
 import os
+import asyncio
+import concurrent.futures
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -32,11 +34,18 @@ nim_off_endpoints = {
         deployment_name="os-aml-mixtral-deployment-1",
         health_url_extn="/health"
     ),
+    # EndpointType.API_CATALOG: EndpointConfig(
+    #     url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
+    #     key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
+    #     model="/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
+    #     deployment_name="os-aml-mixtral-deployment-1",
+    #     health_url_extn="/health"
+    # ),
     EndpointType.API_CATALOG: EndpointConfig(
-        url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
-        key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
-        model="/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
-        deployment_name="os-aml-mixtral-deployment-1",
+        url="https://integrate.api.nvidia.com",
+        key="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",
+        model="mistralai/mixtral-8x7b-instruct-v0.1",
+        deployment_name="",
         health_url_extn="/health"
     )
 }
@@ -246,6 +255,23 @@ def manage_uploaded_files(uploaded_files):
         st.error(f"Failed to manage uploaded files. Reason: {e}")
         return None
 
+def create_db(filepaths, container):
+    with container:
+        start_time = time.monotonic()
+        nim_off_bar = st.progress(0, text="Creating NVStack OFF DB")
+        st.session_state.nv_stack_off_db_ready = oss_retriever_client.process_pdfs(filepaths, False, nim_off_bar.progress)
+        nim_off_time = time.monotonic() - start_time
+        start_time = time.monotonic()
+        nim_on_bar = st.progress(0, text="Creating NVStack ON DB")
+        st.session_state.nv_stack_on_db_ready = nv_retriever_client.add_to_collection(filepaths, nim_on_bar.progress)
+        nim_on_time = time.monotonic() - start_time
+        perf_gain = nim_off_time/nim_on_time
+        metrics = "NVStack OFF time: " +  "{:.0f}".format(nim_off_time) +  " seconds"  + "\tNVStack ON time: " + "{:.2f}".format(nim_on_time) + " seconds"
+        st.markdown(f'''`{metrics}`''')        
+        gain = "Perf gain: "+"{:.1f}".format(perf_gain) + "X🚀"
+        st.markdown(f'''**{gain}**''')
+
+
 nv_retriever_client = NVRetriever(base_url="http://localhost:1984")
 oss_retriever_client = OSSRetriever()
 
@@ -285,7 +311,7 @@ st.markdown("""
 
 cols = st.columns([2, 3, 2, 1])
 with cols[0]:
-    st.header('NeMo Retriever OFF vs NeMo retriever ON')
+    st.header('NeMo Retriever OFF vs NeMo Retriever ON')
 with cols[2]:
     endpoint_type = st.selectbox("Endpoint Type", [endpoint.name for endpoint in EndpointType])
     st.session_state.endpoint_choice = EndpointType[endpoint_type]
@@ -305,13 +331,12 @@ with col1:
             st.session_state.uploaded_filepaths.extend(filepaths)
             st.toast(f"Uploaded {len(filepaths)} files")
 
-
 col2.markdown('<div class="db-button"></div>', unsafe_allow_html=True)
 with col2:
     if st.button('Create DB'):
-        st.write(st.session_state.uploaded_filepaths)
-        st.session_state.nv_stack_off_db_ready = nv_retriever_client.add_to_collection(st.session_state.uploaded_files, nim_on_bar.progress)
-        st.session_state.nv_stack_on_db_ready = oss_retriever_client.process_pdfs(st.session_state.uploaded_files, nim_off_bar.progress)
+        if len(st.session_state.uploaded_filepaths) > 1:
+            create_db(st.session_state.uploaded_filepaths, col3)
+        st.session_state.uploaded_filepaths = []
 
 col1, _, col2, _ = st.columns([5,1,5,1])
 

@@ -1,5 +1,7 @@
 import os
 import json
+import subprocess
+
 from typing import List, Dict
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
@@ -62,7 +64,7 @@ class OSSRetriever:
         chunks = text_splitter.split_text(pdf_text)
         return chunks
 
-    def extract_text_from_pdf(self, pdf_path: str, use_tika: bool = True):
+    def extract_text_from_pdf(self, pdf_path: str, use_tika: bool):
         if use_tika:
             self.ensure_tika_server_running()
             raw = parser.from_file(pdf_path)
@@ -86,22 +88,23 @@ class OSSRetriever:
         docs = self.faiss_db.similarity_search_by_vector(query_embedded, k=self.config["chunks_to_retrieve"])
         return "\n".join([f"{doc.page_content[:300]}" for doc in docs])
 
-    def process_pdfs(self, pdf_paths: List[str], callback) -> bool:
+    def process_pdfs(self, pdf_paths: List[str], use_tika, callback) -> bool:
         total_paths = len(pdf_paths)
         try:
             for i, pdf_path in enumerate(pdf_paths):
-                pdf_text = self.extract_text_from_pdf(pdf_path)
+                pdf_text = self.extract_text_from_pdf(pdf_path, use_tika)
                 chunks = self.chunk_text(pdf_text)
                 documents = [Document(page_content=chunk) for chunk in chunks]
                 self.generate_db(documents)
-                callback((i+1)*100/(total_paths), text=f"Processed PDF {pdf_path}")
+                percentage = int((i + 1) * 100 / total_paths)
+                callback(percentage, text=f"Processed PDF {pdf_path}")
             self.faiss_db.save_local("db")
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return False
         return True
 
-    def get_context(self, user_prompt: str) -> str:
+    def retrieve(self, user_prompt: str) -> str:
         self.faiss_db = FAISS.load_local("db", self.get_embedding_type(), allow_dangerous_deserialization=True)
         query_embedding = self.convert_query_to_embeddings(user_prompt)
         context = self.retrieve_context(query_embedding)
@@ -129,7 +132,7 @@ if __name__ == "__main__":
     user_query = "Example query text to retrieve context from the database"
     
     # Retrieve context based on the user query
-    context = retriever.get_context(user_query)
+    context = retriever.retrieve(user_query)
     
     # Print the retrieved context
     print("Retrieved context:")

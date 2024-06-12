@@ -8,31 +8,38 @@ class NVRetriever:
     """
     def __init__(self, base_url, collection_name="testCollection", pipeline="ranked_hybrid"):
         self.retriever_client =  RetrieverClient(base_url)
-        self.collection_id = self.get_or_create_collection(collection_name, pipeline)
+        self.collection_id = self.create_collection(collection_name, pipeline)
 
-    def get_or_create_collection(self, collection_name, pipeline) -> int:
+    def create_collection(self, collection_name, pipeline) -> int:
+        # Delete existing collection with this name
         for collection in self.retriever_client.get_collections().collections:
             if collection.name == collection_name:
-                return collection.id
+                self.delete_collection(collection.id)
+        # Create new collection
         try:
             response = self.retriever_client.create_collection(pipeline, name=collection_name)
             return response.collection.id
         except Exception as e:
             print("An error occurred while creating a new collection:", e)
         
-    def add_to_collection(self, file_paths, callback) -> bool:
+    def add_to_collection(self, filepaths, callback) -> bool:
         assert self.collection_id is not None
-        total_files = len(file_paths)
-        for i, file_path in enumerate(file_paths):
-            response = self.retriever_client.add_document(collection_id=self.collection_id, filepath=filepath)
-            callback((i+1)/(total_files) * 100, f"Processed PDF {pdf_path}")
-            print(f"Added document {file_name} with id {response.documents[0].id}")
+        total_paths = len(filepaths)
+        try:
+            for i, filepath in enumerate(filepaths):
+                response = self.retriever_client.add_document(collection_id=self.collection_id, filepath=filepath)
+                percentage = int((i + 1) * 100 / total_paths)
+                callback(percentage, f"Processed PDF {filepath}")
+                print(f"Added document {filepath} with id {response.documents[0].id}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return False
         return True
 
-    def delete_collection(self):
+    def delete_collection(self, collection_id):
         try:
-            response = self.retriever_client.delete_collection(collection_id=self.collection_id)
-            print(f"Deleted current collection with id {self.collection_id}")
+            response = self.retriever_client.delete_collection(collection_id=collection_id)
+            print(f"Deleted current collection with id {collection_id}")
         except Exception as e:
             print("An error occured while deleting collection:", e)
 
