@@ -262,7 +262,7 @@ def create_db(filepaths, container):
     with container:
         start_time = time.monotonic()
         nim_off_bar = st.progress(0, text="Creating NVStack OFF DB")
-        st.session_state.nv_stack_off_db_ready = oss_retriever_client.process_pdfs(filepaths, True, nim_off_bar.progress)
+        st.session_state.nv_stack_off_db_ready = oss_retriever_client.process_pdfs(filepaths, False, nim_off_bar.progress)
         nim_off_time = time.monotonic() - start_time
         start_time = time.monotonic()
         nim_on_bar = st.progress(0, text="Creating NVStack ON DB")
