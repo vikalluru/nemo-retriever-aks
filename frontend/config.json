@@ -1,8 +1,7 @@
 {
-    "openai_model": "text-embedding-3-large",
-    "nv_model": "NV-Embed-QA-Mistral-7B",
+    "openai_model": "text-embedding-3-small",
     "maximum_chunk_size": 800,
     "chunk_overlap": 100,
-    "nv_embed_url": "http://51.124.97.12:8080/v1/embeddings",
+    "nv_retriever_url": "http://51.124.97.12:1984",
     "chunks_to_retrieve": 3
 }

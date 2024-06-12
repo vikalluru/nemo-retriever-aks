@@ -260,16 +260,20 @@ def manage_uploaded_files(uploaded_files):
 
 def create_db(filepaths, container):
     with container:
+        nim_off_bar = st.progress(0, text="Creating DB using OSS")
         start_time = time.monotonic()
-        nim_off_bar = st.progress(0, text="Creating NVStack OFF DB")
         st.session_state.nv_stack_off_db_ready = oss_retriever_client.process_pdfs(filepaths, False, nim_off_bar.progress)
         nim_off_time = time.monotonic() - start_time
+        nim_off_bar.empty() 
+        nim_off_final = st.progress(100, text="OSS DB created")
+        nim_on_bar = st.progress(0, text="Creating DB using NeMo Retriever")
         start_time = time.monotonic()
-        nim_on_bar = st.progress(0, text="Creating NVStack ON DB")
         st.session_state.nv_stack_on_db_ready = nv_retriever_client.add_to_collection(filepaths, nim_on_bar.progress)
         nim_on_time = time.monotonic() - start_time
+        nim_on_bar.empty() 
+        nim_on_final = st.progress(100, text="NeMo Retriever DB created")
         perf_gain = nim_off_time/nim_on_time
-        metrics = "NVStack OFF time: " +  "{:.0f}".format(nim_off_time) +  " seconds"  + "\tNVStack ON time: " + "{:.2f}".format(nim_on_time) + " seconds"
+        metrics = "OSS time: " +  "{:.0f}".format(nim_off_time) +  " seconds"  + "\tNeMo Retriever time: " + "{:.2f}".format(nim_on_time) + " seconds"
         st.markdown(f'''`{metrics}`''')        
         gain = "Perf gain: "+"{:.1f}".format(perf_gain) + "X🚀"
         st.markdown(f'''**{gain}**''')
@@ -309,7 +313,8 @@ st.markdown("""
 
 cols = st.columns([4, 2, 2, 1])
 with cols[0]:
-    st.title('NeMo Retriever OFF vs NeMo Retriever ON')
+    st.title('NeMo Retriever OFF vs ON')
+    st.write('OpenAI + FAISS on CPU vs NeMo Retriever (NV-Embed-v1 + NV-Rerank-QA-Mistral-4B) on 3xA100')
 with cols[2]:
     endpoint_type = st.selectbox("Endpoint Type", [endpoint.name for endpoint in EndpointType])
     st.session_state.endpoint_choice = EndpointType[endpoint_type]
@@ -343,21 +348,21 @@ nim_off_config = nim_off_endpoints[endpoint_type]
 nim_on_config = nim_on_endpoints[endpoint_type]
 
 with col1:
-    url = st.text_input("NIM-OFF config", value=nim_off_config.url, key="nim-off-url")
+    url = st.text_input("NIM-OFF endpoint config", value=nim_off_config.url, key="nim-off-url")
     nim_off_config.url = url
     model = st.text_input("Model", value=nim_off_config.model, key="nim-off-model", label_visibility="collapsed")
     nim_off_config.model = model
 
 with col2:
-    url = st.text_input("NIM-ON config", value=nim_on_config.url, key="nim-on-url")
+    url = st.text_input("NIM-ON endpoint config", value=nim_on_config.url, key="nim-on-url")
     nim_on_config.url = url
     model = st.text_input("Model", value=nim_on_config.model, key="nim-on-model", label_visibility="collapsed")
     nim_on_config.model = model
 
 with col1:
-    col3, _, col4, col5 = st.columns([1, 4, 1, 2])
+    col3, _, col4, col5 = st.columns([3, 2, 1, 2])
     with col3:
-        st.text('NIM-OFF')
+        st.write("NeMo Retriever-OFF with NIM-OFF")
     with col4:
         if check_health(endpoint_type, nim_off_config):
             st.markdown('<p style="color:green; font-size:16px; text-align:left;">Status: 🟢</p>', unsafe_allow_html=True)
@@ -370,9 +375,9 @@ with col1:
             st.markdown('<p style="color:red; font-size:16px; text-align:left;">DB ready: 🔴</p>', unsafe_allow_html=True)
 
 with col2:
-    col3, _, col4, col5 = st.columns([1, 4, 1, 2])
+    col3, _, col4, col5 = st.columns([3, 2, 1, 2])
     with col3:
-        st.text('NIM-ON')
+        st.write("NeMo Retriever-ON with NIM-ON")
     with col4:
         if check_health(endpoint_type, nim_on_config):
             st.markdown('<p style="color:green; font-size:16px; text-align:left;">Status: 🟢</p>', unsafe_allow_html=True)

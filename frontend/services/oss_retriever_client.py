@@ -12,10 +12,10 @@ from langchain.schema import Document
 from tika import parser
 
 class OSSRetriever:
-    def __init__(self, embed_tool: Embeddings = OpenAIEmbeddings(model="text-embedding-3-small")):
-        self.embed_tool = embed_tool
+    def __init__(self):
         self.faiss_db = None
         self.config = self.load_config()
+        self.embed_tool = OpenAIEmbeddings(model=self.config["openai_model"])
 
     def load_config(self) -> Dict:
         # Path to the JSON config file

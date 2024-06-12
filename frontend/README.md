@@ -23,7 +23,19 @@ Activate the newly created environment:
 conda activate frontend
 ```
 
-### 2. Navigate to the Frontend Directory
+### 2. Export API Keys
+
+Export your OpenAI API key, Hugging Face Hub, and NGC API KEY as environment variables:
+
+```sh
+export OPENAI_API_KEY=<your_openai_api_key>
+export HUGGING_FACE_HUB_TOKEN=<your_hf_token>
+export NGC_API_KEY=<your_NGC_key>
+```
+
+Replace `<your_openai_api_key>` and `<your_hf_token>` with your actual API keys.
+
+### 3. Navigate to the Frontend Directory
 
 Change to the `nvstack-aks/frontend` directory:
 
@@ -31,16 +43,13 @@ Change to the `nvstack-aks/frontend` directory:
 cd nvstack-aks/frontend
 ```
 
-### 3. Export API Keys
+### 4. Download Nemo Retriever client
 
-Export your OpenAI API key and Hugging Face Hub token as environment variables:
+Download from NGC
 
 ```sh
-export OPENAI_API_KEY=<your_openai_api_key>
-export HUGGING_FACE_HUB_TOKEN=<your_hf_token>
+ngc registry resource download-version "ohlfw0olaadg/ea-participants/nemo-retriever-python-client:0.1.6"
 ```
-
-Replace `<your_openai_api_key>` and `<your_hf_token>` with your actual API keys.
 
 ### 4. Install Requirements
 
