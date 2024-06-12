@@ -15,7 +15,7 @@ class OSSRetriever:
     def __init__(self, embed_tool: Embeddings = OpenAIEmbeddings(model="text-embedding-3-small")):
         self.embed_tool = embed_tool
         self.faiss_db = None
-        self.config = self.load_config()        
+        self.config = self.load_config()
 
     def load_config(self) -> Dict:
         # Path to the JSON config file

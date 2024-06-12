@@ -4,5 +4,5 @@
     "maximum_chunk_size": 800,
     "chunk_overlap": 100,
     "nv_embed_url": "http://51.124.97.12:8080/v1/embeddings",
-    "chunks_to_retrieve": 1
+    "chunks_to_retrieve": 3
 }

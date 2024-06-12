@@ -75,6 +75,9 @@ nim_on_ttft = 0
 nim_on_time_to_next_token = []
 nim_on_tokens_received = 0
 
+nv_retriever_client = NVRetriever(base_url="http://localhost:1984")
+oss_retriever_client = OSSRetriever()
+
 tokenizer = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1", token="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")
 
 def generate_headers(endpoint_type, endpoint_config):
@@ -110,9 +113,9 @@ def check_health(endpoint_type, endpoint_config):
         return False
 
 def get_prompt_with_context(prompt, retriever_client):
-    assert messages[-1]["role"] == "user"
     context = retriever_client.retrieve(prompt)
-    prompt = f"You are an AI assistant in a Financial company. Answer this question: {prompt} based on this: {context}."
+    prompt = f"You are an AI assistant in a Financial company. Answer this question: {prompt} based \
+    on the provided context, prioritize higher scores \n\n Context: \n {context}."
     return prompt
 
 def get_os_stream_response(endpoint_type, endpoint_config, messages):
@@ -259,7 +262,7 @@ def create_db(filepaths, container):
     with container:
         start_time = time.monotonic()
         nim_off_bar = st.progress(0, text="Creating NVStack OFF DB")
-        st.session_state.nv_stack_off_db_ready = oss_retriever_client.process_pdfs(filepaths, False, nim_off_bar.progress)
+        st.session_state.nv_stack_off_db_ready = oss_retriever_client.process_pdfs(filepaths, True, nim_off_bar.progress)
         nim_off_time = time.monotonic() - start_time
         start_time = time.monotonic()
         nim_on_bar = st.progress(0, text="Creating NVStack ON DB")
@@ -270,10 +273,6 @@ def create_db(filepaths, container):
         st.markdown(f'''`{metrics}`''')        
         gain = "Perf gain: "+"{:.1f}".format(perf_gain) + "X🚀"
         st.markdown(f'''**{gain}**''')
-
-
-nv_retriever_client = NVRetriever(base_url="http://localhost:1984")
-oss_retriever_client = OSSRetriever()
 
 if "nv_stack_off_db_ready" not in st.session_state:
     st.session_state.nv_stack_off_db_ready = False
@@ -308,10 +307,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-
-cols = st.columns([2, 3, 2, 1])
+cols = st.columns([4, 2, 2, 1])
 with cols[0]:
-    st.header('NeMo Retriever OFF vs NeMo Retriever ON')
+    st.title('NeMo Retriever OFF vs NeMo Retriever ON')
 with cols[2]:
     endpoint_type = st.selectbox("Endpoint Type", [endpoint.name for endpoint in EndpointType])
     st.session_state.endpoint_choice = EndpointType[endpoint_type]
@@ -328,15 +326,15 @@ with col1:
     if uploaded_files:
         filepaths = manage_uploaded_files(uploaded_files)
         if filepaths:
-            st.session_state.uploaded_filepaths.extend(filepaths)
+            st.session_state.uploaded_filepaths = filepaths[:]
             st.toast(f"Uploaded {len(filepaths)} files")
 
 col2.markdown('<div class="db-button"></div>', unsafe_allow_html=True)
 with col2:
     if st.button('Create DB'):
-        if len(st.session_state.uploaded_filepaths) > 1:
+        if len(st.session_state.uploaded_filepaths) != 0:
             create_db(st.session_state.uploaded_filepaths, col3)
-        st.session_state.uploaded_filepaths = []
+        st.session_state.uploaded_filepaths.clear()
 
 col1, _, col2, _ = st.columns([5,1,5,1])
 
@@ -412,8 +410,8 @@ if prompt := st.chat_input("What is up?"):
             st.markdown(prompt)
         with st.chat_message("assistant"):
             messages = [{"role": "assistant" if m["role"] == "NIMOFF" else m["role"], "content": m["content"]} for m in st.session_state.messages if m["role"] in ["user", "NIMOFF"]]
-            messages[-1]["content"] = get_prompt_with_context(prompt, False, oss_retriever_client)
-            stream = get_os_stream_response(EndpointType.AZUREML, nim_off_endpoints[endpoint_type], messages)
+            messages[-1]["content"] = get_prompt_with_context(prompt, oss_retriever_client)
+            stream = get_os_stream_response(endpoint_type, nim_off_config, messages[-3:])
             response = st.write_stream(stream)
             if len(response) > 0:
                 itl = sum(nim_off_time_to_next_token)
@@ -428,8 +426,8 @@ if prompt := st.chat_input("What is up?"):
             st.markdown(prompt)
         with st.chat_message("assistant"):
             messages = [{"role": "assistant" if m["role"] == "NIM" else m["role"], "content": m["content"]}for m in st.session_state.messages if m["role"] in ["user", "NIM"]]
-            messages[-1]["content"] = get_prompt_with_context(prompt, True, nv_retriever_client)
-            stream = get_nim_stream_response(EndpointType.AZUREML, nim_on_endpoints[endpoint_type], messages)
+            messages[-1]["content"] = get_prompt_with_context(prompt, nv_retriever_client)
+            stream = get_nim_stream_response(endpoint_type, nim_on_config, messages[-3:])
             response = st.write_stream(stream)
             if len(response) > 0:
                 itl = sum(nim_on_time_to_next_token)
