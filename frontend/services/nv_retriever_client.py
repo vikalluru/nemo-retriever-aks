@@ -65,6 +65,6 @@ class NVRetriever:
 
 if __name__ == "__main__":
     breakpoint()
-    ret = NVRetriever("http://localhost:1984", "br_data_test", "ranked_hybrid")
+    ret = NVRetriever("http://51.124.97.12:1984", "br_data_test", "ranked_hybrid")
     ret.add_to_collection(["/home/azureuser/nim-demo-aks/test_data/2018-Annual-Report.pdf"])
     resp = ret.retrieve("What is thte total stock-based compensation expense incurred by Blackrcok in 2018?")

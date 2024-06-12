@@ -34,13 +34,6 @@ nim_off_endpoints = {
         deployment_name="os-aml-mixtral-deployment-1",
         health_url_extn="/health"
     ),
-    # EndpointType.API_CATALOG: EndpointConfig(
-    #     url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
-    #     key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
-    #     model="/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
-    #     deployment_name="os-aml-mixtral-deployment-1",
-    #     health_url_extn="/health"
-    # ),
     EndpointType.API_CATALOG: EndpointConfig(
         url="https://integrate.api.nvidia.com",
         key="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",
@@ -314,7 +307,7 @@ st.markdown("""
 cols = st.columns([4, 2, 2, 1])
 with cols[0]:
     st.title('NeMo Retriever OFF vs ON')
-    st.write('OpenAI + FAISS on CPU vs NeMo Retriever (NV-Embed-v1 + NV-Rerank-QA-Mistral-4B) on 3xA100')
+    st.write('Config: NV-Embed-v1 (1 A100) + NV-Rerank-QA-Mistral-4Bs (1 A100) + Retriever MS (1 A100)')
 with cols[2]:
     endpoint_type = st.selectbox("Endpoint Type", [endpoint.name for endpoint in EndpointType])
     st.session_state.endpoint_choice = EndpointType[endpoint_type]
