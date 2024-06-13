@@ -3,5 +3,38 @@
     "maximum_chunk_size": 800,
     "chunk_overlap": 100,
     "nv_retriever_url": "http://51.124.97.12:1984",
-    "chunks_to_retrieve": 3
+    "chunks_to_retrieve": 3,
+    "nim_off_endpoints": {
+        "AZUREML": {
+        "url": "https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
+        "key": "mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
+        "model": "/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
+        "deployment_name": "os-aml-mixtral-deployment-1",
+        "health_url_extn": "/health"
+        },
+        "API_CATALOG": {
+        "url": "https://integrate.api.nvidia.com",
+        "key": "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",
+        "model": "mistralai/mixtral-8x7b-instruct-v0.1",
+        "deployment_name": "",
+        "health_url_extn": "/health"
+        }
+    },
+    "nim_on_endpoints": {
+        "AZUREML": {
+        "url": "https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
+        "key": "mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
+        "model": "mixtral-instruct",
+        "deployment_name": "nim-aml-mixtral-deployment-1",
+        "health_url_extn": "/v1/models"
+        },
+        "API_CATALOG": {
+        "url": "https://integrate.api.nvidia.com",
+        "key": "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",
+        "model": "mistralai/mixtral-8x7b-instruct-v0.1",
+        "deployment_name": "",
+        "health_url_extn": "/health"
+        }
+    }
+      
 }

@@ -26,39 +26,54 @@ class EndpointConfig:
     deployment_name: str
     health_url_extn: str
 
-nim_off_endpoints = {
-    EndpointType.AZUREML: EndpointConfig(
-        url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
-        key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
-        model="/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
-        deployment_name="os-aml-mixtral-deployment-1",
-        health_url_extn="/health"
-    ),
-    EndpointType.API_CATALOG: EndpointConfig(
-        url="https://integrate.api.nvidia.com",
-        key="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",
-        model="mistralai/mixtral-8x7b-instruct-v0.1",
-        deployment_name="",
-        health_url_extn="/health"
-    )
-}
+def load_endpoints_from_json(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    
+    nim_off_endpoints = {}
+    nim_on_endpoints = {}
+    
+    for endpoint_type, config in data['nim_off_endpoints'].items():
+        nim_off_endpoints[EndpointType[endpoint_type]] = EndpointConfig(**config)
+    
+    for endpoint_type, config in data['nim_on_endpoints'].items():
+        nim_on_endpoints[EndpointType[endpoint_type]] = EndpointConfig(**config)
+    
+    return nim_off_endpoints, nim_on_endpoints    
 
-nim_on_endpoints = {
-    EndpointType.AZUREML: EndpointConfig(
-        url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
-        key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
-        model="mixtral-instruct",
-        deployment_name="nim-aml-mixtral-deployment-1",
-        health_url_extn="/v1/models"
-    ),
-    EndpointType.API_CATALOG: EndpointConfig(
-        url="https://integrate.api.nvidia.com",
-        key="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",
-        model="mistralai/mixtral-8x7b-instruct-v0.1",
-        deployment_name="",
-        health_url_extn="/health"
-    )
-}
+# nim_off_endpoints = {
+#     EndpointType.AZUREML: EndpointConfig(
+#         url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
+#         key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
+#         model="/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
+#         deployment_name="os-aml-mixtral-deployment-1",
+#         health_url_extn="/health"
+#     ),
+#     EndpointType.API_CATALOG: EndpointConfig(
+#         url="https://integrate.api.nvidia.com",
+#         key="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",
+#         model="mistralai/mixtral-8x7b-instruct-v0.1",
+#         deployment_name="",
+#         health_url_extn="/health"
+#     )
+# }
+
+# nim_on_endpoints = {
+#     EndpointType.AZUREML: EndpointConfig(
+#         url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
+#         key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
+#         model="mixtral-instruct",
+#         deployment_name="nim-aml-mixtral-deployment-1",
+#         health_url_extn="/v1/models"
+#     ),
+#     EndpointType.API_CATALOG: EndpointConfig(
+#         url="https://integrate.api.nvidia.com",
+#         key="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",
+#         model="mistralai/mixtral-8x7b-instruct-v0.1",
+#         deployment_name="",
+#         health_url_extn="/health"
+#     )
+# }
 
 nim_off_ttft = 0
 nim_off_time_to_next_token = []
@@ -70,6 +85,8 @@ nim_on_tokens_received = 0
 
 nv_retriever_client = NVRetriever(base_url="http://51.124.97.12:1984")
 oss_retriever_client = OSSRetriever()
+file_path = '../config.json'
+nim_off_endpoints, nim_on_endpoints = load_endpoints_from_json(file_path)
 
 tokenizer = AutoTokenizer.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1", token="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")
 
