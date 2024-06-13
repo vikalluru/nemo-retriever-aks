@@ -3,10 +3,12 @@
 This guide provides step-by-step instructions on how to set up and deploy NeMo Microservices on Azure Kubernetes service 
 and test it using a streamlit based frontend app.
 
-# Architecture diagram
+## Architecture diagram
 ![NIM on AzureML is optional. You can replace with other LLM endpoints in frontend/config.json](images/nemo_retriever_aks.png)
 
-## Setup your Azure Account
+## Deploy Embedding and Reranking microservices on AKS
+
+### Setup your Azure Account
 To begin, log in to your Azure account and set the appropriate subscription.
 
 ```bash
@@ -14,21 +16,21 @@ az login
 az account set --subscription <your subscription>
 ```
 
-## Create AKS Node Pool
+### Create AKS Node Pool
 Create a new node pool in your Azure Kubernetes Service (AKS) cluster. This node pool will host the GPU nodes required for running Nvidia microservices.
 
 ```bash
 az aks nodepool add --resource-group <your resource group name> --cluster-name <your aks cluster name> --name <nodepool name> --node-count 2 --skip-gpu-driver-install --node-vm-size Standard_NC48ads_A100_v4 --node-osdisk-size 256 --max-pods 110
 ```
 
-## Get Your AKS Context
+### Get Your AKS Context
 Retrieve the AKS context to interact with your AKS cluster.
 
 ```bash
 az aks get-credentials --resource-group <your resource group name> --name <your aks name>
 ```
 
-## Deploy GPU operator on AKS
+### Deploy GPU operator on AKS
 Add the Nvidia Helm repository and deploy the GPU operator to manage GPU resources.
 
 ```bash
@@ -37,21 +39,21 @@ helm repo update
 helm install --create-namespace --namespace nvidia-gpu-operator nvidia/gpu-operator --wait --generate-name
 ```
 
-## Deploy Embedding Microservice on AKS
+### Deploy Embedding Microservice on AKS
 Deploy the embedding microservice using Helm.
 
 ```bash
 helm --namespace inference-ms install nemo-embedding embedding-ms
 ```
 
-## Deploy Reranking Microservice on AKS
+### Deploy Reranking Microservice on AKS
 Deploy the reranking microservice using Helm.
 
 ```bash
 helm --namespace inference-ms install nemo-reranking reranking-ms
 ```
 
-## Get Embedding and Reranking service IP address from kubectl
+### Get Embedding and Reranking service IP address from kubectl
 
 Run the command below:
 ```bash
