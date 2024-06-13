@@ -3,8 +3,9 @@
 This guide provides step-by-step instructions on how to set up and deploy NeMo Microservices on Azure Kubernetes service 
 and test it using a streamlit based frontend app.
 
-## Architecture diagram
-![NIM on AzureML is optional. You can replace with other LLM endpoints in frontend/config.json](images/nemo_retriever_aks.png)
+![](images/nemo_retriever_aks.png)
+
+NOTE: NIM on AzureML is optional. You can replace with other LLM endpoints in frontend/config.json
 
 ## Deploy Embedding and Reranking microservices on AKS
 
