@@ -107,7 +107,8 @@ Launch frontend app
 streamlit run app.py
 ```
 
-## Scale Down Your Node Pool to Save Costs
+## Winding down
+### Scale Down Your Node Pool to Save Costs
 To save costs, scale down your GPU node pool when not in use.
 
 ```bash
@@ -118,7 +119,7 @@ az aks nodepool scale \
   --node-count 0
 ```
 
-## Check if Your Nodes are Down
+### Check if Your Nodes are Down
 Verify the status of your node pool to ensure it has scaled down correctly.
 
 ```bash
@@ -128,7 +129,7 @@ az aks nodepool show \
   --name <nodepool name>
 ```
 
-## Respin Your Nodes Next Time
+### Respin Your Nodes Next Time
 When you need to use the GPU nodes again, scale the node pool back up.
 
 ```bash
@@ -137,7 +138,4 @@ az aks nodepool scale \
   --cluster-name <your aks cluster name> \
   --name <nodepool name> \
   --node-count 2
-```
-
-Follow these instructions to efficiently manage your Nvidia Inference Microservices and NeMo microservices on Azure, ensuring optimal performance and cost-efficiency.
 ```
