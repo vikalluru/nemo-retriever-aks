@@ -18,6 +18,20 @@
         "model": "mistralai/mixtral-8x7b-instruct-v0.1",
         "deployment_name": "",
         "health_url_extn": "/health"
+        },
+        "PROMPTFLOW": {
+        "url":"https://contoso-flow-prompt-only.swedencentral.inference.ml.azure.com",
+        "key":"NRl3ay0WFx8060aKfkhqVjFS4GFqQS9U",
+        "model":"Mixtral 8x7B",
+        "deployment_name":"contoso-flow-prompt-only-1",
+        "health_url_extn":"/health"
+        },
+        "VM": {
+        "url": "https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
+        "key": "mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
+        "model": "/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
+        "deployment_name": "os-aml-mixtral-deployment-1",
+        "health_url_extn": "/health"
         }
     },
     "nim_on_endpoints": {
@@ -34,7 +48,20 @@
         "model": "mistralai/mixtral-8x7b-instruct-v0.1",
         "deployment_name": "",
         "health_url_extn": "/health"
-        }
+        },
+        "VM": {
+        "url": "http://localhost:8000",
+        "key": "",
+        "model": "meta/llama3-8b-instruct",
+        "deployment_name": "",
+        "health_url_extn": "/v1/health/ready"
+        },
+        "PROMPTFLOW": {
+        "url": "https://contoso-flow-prompt-only.swedencentral.inference.ml.azure.com",
+        "key": "NRl3ay0WFx8060aKfkhqVjFS4GFqQS9U",
+        "model": "Mixtral 8x7B",
+        "deployment_name": "contoso-flow-prompt-only-1",
+        "health_url_extn": "/health"
+        } 
     }
-      
 }

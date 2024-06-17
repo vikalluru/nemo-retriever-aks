@@ -110,6 +110,10 @@ Launch frontend app
 streamlit run app.py
 ```
 
+Upload documents from `./test_data`
+
+Test with example prompt: "What are the components of stock-based compensation in 2018, what are the values for each component?"
+
 ## Winding down
 ### Scale Down Your Node Pool to Save Costs
 To save costs, scale down your GPU node pool when not in use.

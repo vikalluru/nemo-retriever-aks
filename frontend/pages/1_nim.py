@@ -3,6 +3,7 @@ import time
 import json
 import requests
 import re
+import os
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -11,7 +12,7 @@ from transformers import AutoTokenizer
 class EndpointType(Enum):
     AZUREML = auto()
     PROMPTFLOW = auto()
-    AKS = auto()
+    VM = auto()
     API_CATALOG = auto()
 
 @dataclass
@@ -31,67 +32,23 @@ names_id = {
     "Manuel": "17"
 }
 
-nim_off_endpoints = {
-    EndpointType.AKS: EndpointConfig(
-        url="http://localhost:8001",
-        key="",
-        model="meta-llama/Meta-Llama-3-8B-Instruct",
-        deployment_name="",
-        health_url_extn="/health"
-    ),
-    EndpointType.AZUREML: EndpointConfig(
-        url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
-        key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
-        model="/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
-        deployment_name="os-aml-mixtral-deployment-1",
-        health_url_extn="/health"
-    ),
-    EndpointType.PROMPTFLOW: EndpointConfig(
-        url="https://contoso-flow-prompt-only.swedencentral.inference.ml.azure.com",
-        key="NRl3ay0WFx8060aKfkhqVjFS4GFqQS9U",
-        model="Mixtral 8x7B",
-        deployment_name="contoso-flow-prompt-only-1",
-        health_url_extn="/health"
-    ),
-    EndpointType.API_CATALOG: EndpointConfig(
-        url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
-        key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
-        model="/var/azureml-app/azureml-models/mistralai-Mixtral-8x7B-Instruct-v01/5/mlflow_model_folder/data/model",
-        deployment_name="os-aml-mixtral-deployment-1",
-        health_url_extn="/health"
-    )
-}
+def load_endpoints_from_json(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+    
+    nim_off_endpoints = {}
+    nim_on_endpoints = {}
+    
+    for endpoint_type, config in data['nim_off_endpoints'].items():
+        nim_off_endpoints[EndpointType[endpoint_type]] = EndpointConfig(**config)
+    
+    for endpoint_type, config in data['nim_on_endpoints'].items():
+        nim_on_endpoints[EndpointType[endpoint_type]] = EndpointConfig(**config)
+    
+    return nim_off_endpoints, nim_on_endpoints
 
-nim_on_endpoints = {
-    EndpointType.AKS: EndpointConfig(
-        url="http://localhost:8000",
-        key="",
-        model="meta/llama3-8b-instruct",
-        deployment_name="",
-        health_url_extn="/v1/health/ready"
-    ),    
-    EndpointType.AZUREML: EndpointConfig(
-        url="https://nim-aml-endpoint-1.westeurope.inference.ml.azure.com",
-        key="mVHiH89aX9KtWvartgwXG5V1fmCAjYEy",
-        model="mixtral-instruct",
-        deployment_name="nim-aml-mixtral-deployment-1",
-        health_url_extn="/v1/models"
-    ),
-    EndpointType.PROMPTFLOW: EndpointConfig(
-        url="https://contoso-flow-prompt-only.swedencentral.inference.ml.azure.com",
-        key="NRl3ay0WFx8060aKfkhqVjFS4GFqQS9U",
-        model="Mixtral 8x7B",
-        deployment_name="contoso-flow-prompt-only-1",
-        health_url_extn="/health"
-    ),
-    EndpointType.API_CATALOG: EndpointConfig(
-        url="https://integrate.api.nvidia.com",
-        key="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",
-        model="mistralai/mixtral-8x7b-instruct-v0.1",
-        deployment_name="",
-        health_url_extn="/health"
-    )
-}
+config_path = os.path.join(os.path.dirname(__file__), '..', 'config.json')
+nim_off_endpoints, nim_on_endpoints = load_endpoints_from_json(config_path)
 
 nim_off_ttft = 0
 nim_off_time_to_next_token = []
@@ -109,7 +66,7 @@ def generate_headers(endpoint_type, endpoint_config):
     }
 
     if endpoint_config.key != "":
-        headers.update({'Authorization': endpoint_config.key})
+        headers.update({'Authorization': f'Bearer {endpoint_config.key}'})
 
     if endpoint_config.deployment_name != "":
         headers.update({'azureml-model-deployment': endpoint_config.deployment_name})
@@ -129,7 +86,9 @@ def check_health(endpoint_type, endpoint_config):
     headers = generate_headers(endpoint_type, endpoint_config)
     health_url = endpoint_config.url + endpoint_config.health_url_extn
     try:
+        print(health_url, headers)
         response = requests.get(health_url, headers=headers)
+        print(response)
         if response.status_code == 200:
             return True
         else:
@@ -340,22 +299,14 @@ nim_on_config = nim_on_endpoints[endpoint_type]
 with col1:
     url = st.text_input("NIM-OFF config", value=nim_off_config.url, key="nim-off-url")
     nim_off_config.url = url
-    # key = st.text_input("API key", value=nim_off_config.key, key="nim-off-key", label_visibility="collapsed")
-    # nim_off_config.key = key
     model = st.text_input("Model", value=nim_off_config.model, key="nim-off-model", label_visibility="collapsed")
     nim_off_config.model = model
-    # deployment_name = st.text_input("Deployment", value=nim_off_config.deployment_name, key="nim-off-depname", label_visibility="collapsed")
-    # nim_off_config.deployment_name = deployment_name
 
 with col2:
     url = st.text_input("NIM-ON config", value=nim_on_config.url, key="nim-on-url")
     nim_on_config.url = url
-    # key = st.text_input("API key", value=nim_on_config.key, key="nim-on-key", label_visibility="collapsed")
-    # nim_on_config.key = key
     model = st.text_input("Model", value=nim_on_config.model, key="nim-on-model", label_visibility="collapsed")
     nim_on_config.model = model
-    # deployment_name = st.text_input("Deployment", value=nim_on_config.deployment_name, key="nim-on-depname", label_visibility="collapsed")
-    # nim_on_config.deployment_name = deployment_name
 
 with col1:
     col3, _, col4 = st.columns([1, 5, 1])
